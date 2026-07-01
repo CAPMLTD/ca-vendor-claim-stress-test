@@ -61,7 +61,12 @@ def build_markdown_report(result, narrative: str, vendor_name: str = "") -> str:
 
     # --- 2. Evaluator independence ---
     lines.append("## 🔎 Evaluator Independence")
-    gate_pill = "🔴 GATE FAILED" if result.independence_gate_failed else "🟢 PASSED"
+    if result.independence_gate_failed is None:
+        gate_pill = "🟡 NOT YET ANSWERED"
+    elif result.independence_gate_failed:
+        gate_pill = "🔴 GATE FAILED"
+    else:
+        gate_pill = "🟢 PASSED"
     lines.append(
         f"**Who ran this evaluation:** {GATE_ANSWER_LABELS.get(result.gate_answer, 'Not answered')} "
         f"— {gate_pill}"
@@ -97,7 +102,7 @@ def build_markdown_report(result, narrative: str, vendor_name: str = "") -> str:
     # --- 3. Send these questions to your vendor ---
     lines.append("## 📤 Send these questions to your vendor")
     any_followups = False
-    if result.independence_gate_failed:
+    if result.independence_gate_failed is not False:
         any_followups = True
         lines.append(f"- {FOLLOWUP_TEMPLATES['gate_independence']}")
     for q in result.followup_targets:
@@ -390,8 +395,12 @@ def build_pdf_report(result, narrative: str, vendor_name: str = "") -> bytes:
     # --- Evaluator Independence ---
     section_header("Evaluator Independence")
     body(f"Who ran this evaluation: {GATE_ANSWER_LABELS.get(result.gate_answer, 'Not answered')}", style="B")
-    pill("GATE FAILED" if result.independence_gate_failed else "PASSED",
-         _RED if result.independence_gate_failed else _GREEN)
+    if result.independence_gate_failed is None:
+        pill("NOT YET ANSWERED", _AMBER)
+    elif result.independence_gate_failed:
+        pill("GATE FAILED", _RED)
+    else:
+        pill("PASSED", _GREEN)
     pdf.ln(1)
     body(
         f"Why it matters: an evaluation run and reported by the model's own "
@@ -417,7 +426,7 @@ def build_pdf_report(result, narrative: str, vendor_name: str = "") -> bytes:
     # --- Send these questions to your vendor ---
     section_header("Send these questions to your vendor")
     followup_items = []
-    if result.independence_gate_failed:
+    if result.independence_gate_failed is not False:
         followup_items.append(FOLLOWUP_TEMPLATES["gate_independence"])
     for q in result.followup_targets:
         template = FOLLOWUP_TEMPLATES.get(q.question_id)

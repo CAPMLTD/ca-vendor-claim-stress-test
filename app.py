@@ -95,7 +95,11 @@ def progress_snapshot():
         answered_questions += len(dr.questions)
         if dr.all_answered:
             answered_dimensions += 1
-    completion_pct = round(100 * answered_questions / TOTAL_QUESTIONS, 1)
+    # +1 for the Evaluator Independence gate question, so the wizard can
+    # never claim "100%" while that mandatory question is still unanswered.
+    if st.session_state.gate_answer is not None:
+        answered_questions += 1
+    completion_pct = round(100 * answered_questions / (TOTAL_QUESTIONS + 1), 1)
     return answered_dimensions, len(DIMENSIONS), completion_pct
 
 
@@ -401,7 +405,12 @@ def render_results():
         "dont_know": "Don't know",
     }
     gate_label = answer_map.get(result.gate_answer, "Not answered")
-    fail_pill = pill("GATE FAILED", "red") if result.independence_gate_failed else pill("PASSED", "green")
+    if result.independence_gate_failed is None:
+        fail_pill = pill("NOT YET ANSWERED", "amber")
+    elif result.independence_gate_failed:
+        fail_pill = pill("GATE FAILED", "red")
+    else:
+        fail_pill = pill("PASSED", "green")
     st.markdown(
         f"**Who ran this evaluation:** {gate_label} &nbsp; {fail_pill}",
         unsafe_allow_html=True,
@@ -431,7 +440,7 @@ def render_results():
     from src.data import FOLLOWUP_TEMPLATES
 
     any_followups = False
-    if result.independence_gate_failed:
+    if result.independence_gate_failed is not False:
         any_followups = True
         st.markdown(f"- {FOLLOWUP_TEMPLATES['gate_independence']}")
     for q in result.followup_targets:
@@ -443,7 +452,7 @@ def render_results():
         st.markdown("No outstanding follow-up questions — every answered dimension scored adequate.")
     else:
         followup_text = "\n".join(
-            (["- " + FOLLOWUP_TEMPLATES["gate_independence"]] if result.independence_gate_failed else [])
+            (["- " + FOLLOWUP_TEMPLATES["gate_independence"]] if result.independence_gate_failed is not False else [])
             + [
                 f"- [{q.dimension_name}] {FOLLOWUP_TEMPLATES.get(q.question_id, '')}"
                 for q in result.followup_targets

@@ -203,8 +203,12 @@ def compute_result(
             if q.score_key in ("withheld", "inadequate"):
                 followup_targets.append(q)
 
-    total_questions = sum(len(d["questions"]) for d in DIMENSIONS)
-    completion_pct = round(100 * answered_questions / total_questions, 1)
+    # +1 for the Evaluator Independence gate question — it's asked "before
+    # anything else" and is not part of any dimension, but skipping it is
+    # still an outstanding item, not something "100%" should paper over.
+    total_questions = sum(len(d["questions"]) for d in DIMENSIONS) + 1
+    answered_questions_all = answered_questions + (1 if gate_answer is not None else 0)
+    completion_pct = round(100 * answered_questions_all / total_questions, 1)
 
     weighted_pct = None
     if weighted_max_total > 0:
@@ -216,10 +220,15 @@ def compute_result(
     )
 
     dimension_3_gate_failed = False
-    if multi_use_case and d3_result is not None:
-        d3_q1 = next((q for q in d3_result.questions if q.question_id == "d3_q1"), None)
-        if d3_q1 is not None and d3_q1.raw_score < 2:
+    if d3_result is not None and d3_result.any_answered:
+        if multi_use_case is None:
+            # Reached this dimension but never said whether it's multi-use-case —
+            # treat as outstanding, not as a silent "single use case" pass.
             dimension_3_gate_failed = True
+        elif multi_use_case:
+            d3_q1 = next((q for q in d3_result.questions if q.question_id == "d3_q1"), None)
+            if d3_q1 is not None and d3_q1.raw_score < 2:
+                dimension_3_gate_failed = True
 
     force_red = False
     force_red_reasons = []
@@ -238,7 +247,12 @@ def compute_result(
             "and test data."
         )
 
-    gate_cap_applies = bool(independence_failed) or dimension_3_gate_failed
+    # Cap the verdict unless independence has been explicitly confirmed
+    # (internal_separate / independent_third_party). An unanswered gate
+    # (independence_failed is None) is not a pass — it's exactly the same
+    # "we don't actually know" situation as an explicit "dont_know" answer,
+    # and must not let a verdict reach GREEN on missing information.
+    gate_cap_applies = independence_failed is not False or dimension_3_gate_failed
 
     # Verdict banding
     if force_red:
