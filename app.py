@@ -130,7 +130,7 @@ def render_sidebar():
             if st.button(label, use_container_width=True, key=f"nav_{dimension['id']}"):
                 go_to(dimension["id"])
                 st.rerun()
-        can_see_results = completion_pct >= 40 or gate_done
+        can_see_results = completion_pct >= 40
         if st.button(
             "See results",
             type="primary",

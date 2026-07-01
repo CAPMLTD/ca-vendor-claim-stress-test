@@ -255,19 +255,23 @@ def compute_result(
     gate_cap_applies = independence_failed is not False or dimension_3_gate_failed
 
     # Verdict banding
-    if force_red:
+    # weighted_pct is None only when literally no dimension question has been
+    # answered — there's nothing to cap or band yet, so this must be checked
+    # before gate_cap_applies, which would otherwise present a confident-
+    # sounding "AMBER — proceed with conditions" banner over zero evidence.
+    if weighted_pct is None:
         verdict = "RED"
-    elif weighted_pct is not None and weighted_pct < 60:
+    elif force_red:
+        verdict = "RED"
+    elif weighted_pct < 60:
         verdict = "RED"
     elif gate_cap_applies:
         verdict = "AMBER"
-    elif weighted_pct is not None and 60 <= weighted_pct < 85:
+    elif 60 <= weighted_pct < 85:
         verdict = "AMBER"
-    elif weighted_pct is not None and weighted_pct >= 85 and not gate_cap_applies:
-        verdict = "GREEN"
     else:
-        # Not enough data yet to land on a percentage-driven band
-        verdict = "AMBER" if weighted_pct is not None else "RED"
+        # weighted_pct >= 85 and gate_cap_applies is already handled above
+        verdict = "GREEN"
 
     return StressTestResult(
         verdict=verdict,
