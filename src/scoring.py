@@ -42,6 +42,27 @@ class QuestionResult:
     adjusted_score: float    # after self-report downgrade and minor-weight
     max_score: float         # 2 * minor_weight
     downgraded: bool
+    implicit: bool = False   # True if synthesized because the buyer never answered it —
+                              # scores exactly like "not yet asked" so skipping a question
+                              # is never a better strategy than honestly saying you don't know
+
+
+def _implicit_not_yet_asked(dimension: dict, question: dict) -> "QuestionResult":
+    minor_weight = question.get("minor_weight", 1.0)
+    return QuestionResult(
+        dimension_id=dimension["id"],
+        dimension_name=dimension["name"],
+        question_id=question["id"],
+        script=question["script"],
+        score_key="withheld",
+        score_label=SCALE_LABELS["withheld"],
+        evidence=NOT_YET_ASKED_EVIDENCE,
+        raw_score=0,
+        adjusted_score=0.0,
+        max_score=2 * minor_weight,
+        downgraded=False,
+        implicit=True,
+    )
 
 
 @dataclass
@@ -51,16 +72,18 @@ class DimensionResult:
     name: str
     score_weight: int
     eu_ai_act_tag: Optional[str]
-    questions: list = field(default_factory=list)  # list[QuestionResult]
+    questions: list = field(default_factory=list)  # list[QuestionResult] — always
+    # covers every question in the dimension; unanswered ones appear as implicit
+    # "not yet asked" entries so scoring and the Flags list can't be gamed by
+    # simply never visiting a dimension.
 
     @property
     def any_answered(self) -> bool:
-        return len(self.questions) > 0
+        return any(not q.implicit for q in self.questions)
 
     @property
     def all_answered(self) -> bool:
-        total_qs = len(DIMENSION_QUESTION_COUNT.get(self.id, []))
-        return len(self.questions) == total_qs
+        return all(not q.implicit for q in self.questions)
 
     @property
     def raw_score_sum(self) -> float:
@@ -83,9 +106,6 @@ class DimensionResult:
         if self.max_score_sum == 0:
             return None
         return round(100 * self.raw_score_sum / self.max_score_sum, 1)
-
-
-DIMENSION_QUESTION_COUNT = {d["id"]: d["questions"] for d in DIMENSIONS}
 
 
 @dataclass
@@ -153,8 +173,9 @@ def compute_dimension_result(dimension: dict, dim_answers: dict) -> DimensionRes
     for question in dimension["questions"]:
         answer = dim_answers.get(question["id"])
         if answer is None:
-            continue
-        result.questions.append(score_answer(dimension, question, answer))
+            result.questions.append(_implicit_not_yet_asked(dimension, question))
+        else:
+            result.questions.append(score_answer(dimension, question, answer))
     return result
 
 
@@ -187,11 +208,21 @@ def compute_result(
         if dimension["id"] == "d3_percase":
             d3_result = dr
 
-        if dr.any_answered:
-            weighted_score_total += dr.weighted_score
-            weighted_max_total += dr.weighted_max
+        # Every question counts toward the weighted total now, answered or
+        # not — an unanswered question scores exactly like an implicit
+        # "not yet asked" (0 out of its max), so leaving a dimension
+        # untouched can never score better than honestly saying you don't
+        # know. Previously this was gated on `dr.any_answered`, which let a
+        # buyer boost their weighted score by simply never visiting an
+        # inconvenient dimension.
+        weighted_score_total += dr.weighted_score
+        weighted_max_total += dr.weighted_max
 
         for q in dr.questions:
+            if q.implicit:
+                not_yet_asked.append(q)
+                followup_targets.append(q)
+                continue
             answered_questions += 1
             if q.score_key == "withheld":
                 if q.evidence == NOT_YET_ASKED_EVIDENCE:
@@ -234,13 +265,18 @@ def compute_result(
     force_red_reasons = []
     d2_result = next((d for d in dim_results if d.id == "d2_distributional"), None)
     d6_result = next((d for d in dim_results if d.id == "d6_leakage"), None)
-    if d2_result is not None and d2_result.any_answered and d2_result.raw_score_sum == 0:
+    # Not gated on any_answered: a dimension left entirely untouched scores
+    # zero via implicit "not yet asked" entries exactly like one explicitly
+    # marked "I'm not sure" — the forced-red escalation must fire the same
+    # way in both cases, or skipping a dimension becomes a softer verdict
+    # than honestly saying you don't know.
+    if d2_result is not None and d2_result.raw_score_sum == 0:
         force_red = True
         force_red_reasons.append(
             "Distributional Validity scored zero — the 'unseen' data claim and "
             "subgroup breakdown are both unsupported."
         )
-    if d6_result is not None and d6_result.any_answered and d6_result.raw_score_sum == 0:
+    if d6_result is not None and d6_result.raw_score_sum == 0:
         force_red = True
         force_red_reasons.append(
             "Leakage Risk scored zero — there is no evidence separating training "
@@ -255,10 +291,11 @@ def compute_result(
     gate_cap_applies = independence_failed is not False or dimension_3_gate_failed
 
     # Verdict banding
-    # weighted_pct is None only when literally no dimension question has been
-    # answered — there's nothing to cap or band yet, so this must be checked
-    # before gate_cap_applies, which would otherwise present a confident-
-    # sounding "AMBER — proceed with conditions" banner over zero evidence.
+    # weighted_max_total is 0 only if DIMENSIONS itself were empty, which
+    # doesn't happen in practice — kept as a defensive guard so a totally
+    # blank wizard (weighted_pct 0.0, since every question implicitly
+    # scores zero) still lands on RED via the normal <60 band below, rather
+    # than skipping straight to the confident-sounding AMBER gate-cap band.
     if weighted_pct is None:
         verdict = "RED"
     elif force_red:

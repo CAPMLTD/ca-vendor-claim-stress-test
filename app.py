@@ -92,7 +92,11 @@ def progress_snapshot():
     answered_dimensions = 0
     for dimension in DIMENSIONS:
         dr = compute_dimension_result(dimension, st.session_state.answers.get(dimension["id"], {}))
-        answered_questions += len(dr.questions)
+        # dr.questions always covers every question in the dimension now —
+        # unanswered ones appear as implicit "not yet asked" placeholders for
+        # scoring purposes. Completion must count only genuinely-answered
+        # ones, or it silently reports 100% before anything is answered.
+        answered_questions += sum(1 for q in dr.questions if not q.implicit)
         if dr.all_answered:
             answered_dimensions += 1
     # +1 for the Evaluator Independence gate question, so the wizard can
