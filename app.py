@@ -105,7 +105,7 @@ def render_sidebar():
         answered_dims, total_dims, completion_pct = progress_snapshot()
         st.progress(min(completion_pct / 100, 1.0))
         st.caption(f"{answered_dims} of {total_dims} dimensions fully answered")
-        st.caption(f"{completion_pct}% of all questions answered")
+        st.caption(f"{completion_pct}% of questions answered in the wizard")
 
         gate_done = st.session_state.gate_answer is not None
         st.caption(f"Evaluator independence: {'answered' if gate_done else 'not answered'}")
@@ -330,7 +330,7 @@ def render_dimension(dimension: dict):
     answered_dims, total_dims, completion_pct = progress_snapshot()
     with progress_placeholder.container():
         st.progress(min(completion_pct / 100, 1.0))
-        st.caption(f"{answered_dims} of {total_dims} dimensions answered · {completion_pct}% of all questions")
+        st.caption(f"{answered_dims} of {total_dims} dimensions answered · {completion_pct}% of questions answered in the wizard")
         if completion_pct >= 40:
             st.markdown(
                 '<div class="ca-directional-msg">You\'ve answered enough to see a '
@@ -377,8 +377,16 @@ def render_results():
 
     if result.completion_pct < 100:
         st.info(
-            f"Directional result — {result.completion_pct}% of questions answered. "
-            "Answer more dimensions for a fully confirmed verdict."
+            f"Directional result — {result.completion_pct}% of questions answered "
+            "in the wizard so far. Answer more dimensions for a fully confirmed "
+            "verdict."
+        )
+    else:
+        st.caption(
+            "All questions have a recorded answer in the wizard — including any "
+            "marked \"I'm not sure / haven't asked yet.\" That's wizard "
+            "completion, not evidence completeness: check \"Still need to ask\" "
+            "below for what's still outstanding."
         )
 
     # 1. Verdict banner
@@ -485,15 +493,18 @@ def render_results():
     st.markdown("### What this evaluation actually tells you")
     context_note = WORKED_EXAMPLE["narrative_context"] if st.session_state.vendor_name.startswith("Worked example") else ""
 
+    # Generate automatically the first time results are viewed — this is the
+    # single most valuable output for the buyer, so it shouldn't depend on
+    # remembering to click a button before exporting. Cached in session_state
+    # so it only fires once per result set, not on every widget interaction.
     if st.session_state.narrative is None and st.session_state.narrative_error is None:
-        if st.button("Generate narrative summary", type="primary"):
-            with st.spinner("Asking Claude to ground a narrative in your answers..."):
-                try:
-                    st.session_state.narrative = generate_narrative(result, context_note)
-                except Exception as exc:  # noqa: BLE001 — surfaced to the user
-                    st.session_state.narrative_error = str(exc)
-            st.rerun()
-    elif st.session_state.narrative:
+        with st.spinner("Asking Claude to ground a narrative in your answers..."):
+            try:
+                st.session_state.narrative = generate_narrative(result, context_note)
+            except Exception as exc:  # noqa: BLE001 — surfaced to the user
+                st.session_state.narrative_error = str(exc)
+
+    if st.session_state.narrative:
         st.markdown(st.session_state.narrative)
         if st.button("Regenerate"):
             st.session_state.narrative = None
@@ -517,7 +528,13 @@ def render_results():
                 st.caption("Not answered.")
                 continue
             pct_str = f" ({dim.pct}%)" if dim.pct is not None else ""
-            st.caption(f"Score: {dim.raw_score_sum}/{dim.max_score_sum}{pct_str}")
+            weighted_note = ""
+            if dim.score_weight != 1:
+                weighted_note = (
+                    f" · weighted contribution: {dim.weighted_score:g}/{dim.weighted_max:g} "
+                    f"(raw ×{dim.score_weight})"
+                )
+            st.caption(f"Raw score: {dim.raw_score_sum:g}/{dim.max_score_sum:g}{pct_str}{weighted_note}")
             for q in dim.questions:
                 downgrade = " _(downgraded — self-reported)_" if q.downgraded else ""
                 st.markdown(
@@ -535,7 +552,12 @@ def render_results():
     vendor_name = st.text_input("Vendor / product name (for the report title)", value=st.session_state.vendor_name)
     st.session_state.vendor_name = vendor_name
 
-    narrative_for_export = st.session_state.narrative or ""
+    if st.session_state.narrative:
+        narrative_for_export = st.session_state.narrative
+    elif st.session_state.narrative_error:
+        narrative_for_export = f"Narrative unavailable: {st.session_state.narrative_error}"
+    else:
+        narrative_for_export = ""
     md_report = build_markdown_report(result, narrative_for_export, vendor_name)
 
     col_md, col_pdf = st.columns(2)

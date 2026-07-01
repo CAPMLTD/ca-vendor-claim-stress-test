@@ -19,7 +19,12 @@ def build_markdown_report(result, narrative: str, vendor_name: str = "") -> str:
     lines.append(f"## Verdict: {result.verdict} — {result.verdict_line}")
     if result.weighted_pct is not None:
         lines.append(f"Weighted evidence score: **{result.weighted_pct}%** "
-                      f"(questionnaire {result.completion_pct}% complete)")
+                      f"(wizard {result.completion_pct}% answered)")
+        lines.append(
+            "_Wizard-answered means every question has a recorded response — "
+            "including 'I haven't asked yet.' It is not a measure of how much "
+            "evidence you actually have; see Flags below for outstanding gaps._"
+        )
     lines.append("")
     lines.append(
         "> This tool checks whether the evidence you've been shown is honest and "
@@ -125,8 +130,15 @@ def build_markdown_report(result, narrative: str, vendor_name: str = "") -> str:
             lines.append("_Not answered._")
             lines.append("")
             continue
-        lines.append(f"Score: {dim.raw_score_sum}/{dim.max_score_sum}"
-                     + (f" ({dim.pct}%)" if dim.pct is not None else ""))
+        line = f"Raw score: {dim.raw_score_sum:g}/{dim.max_score_sum:g}"
+        if dim.pct is not None:
+            line += f" ({dim.pct}%)"
+        if dim.score_weight != 1:
+            line += (
+                f" · weighted contribution to overall score: "
+                f"{dim.weighted_score:g}/{dim.weighted_max:g} (raw ×{dim.score_weight})"
+            )
+        lines.append(line)
         lines.append("")
         lines.append("| Question | Answer | Evidence | Score |")
         lines.append("|---|---|---|---|")
@@ -185,7 +197,30 @@ def build_pdf_report(result, narrative: str, vendor_name: str = "") -> bytes:
     h2(_clean(f"Verdict: {result.verdict} - {result.verdict_line}"))
     if result.weighted_pct is not None:
         body(_clean(f"Weighted evidence score: {result.weighted_pct}% "
-                     f"(questionnaire {result.completion_pct}% complete)"))
+                     f"(wizard {result.completion_pct}% answered)"))
+        body(_clean(
+            "Wizard-answered means every question has a recorded response - "
+            "including 'I haven't asked yet.' It is not a measure of how much "
+            "evidence you actually have; see Flags below for outstanding gaps."
+        ))
+
+    answer_map = {
+        "same_team": "Same team",
+        "internal_separate": "Internal-separate team",
+        "independent_third_party": "Independent third party",
+        "dont_know": "Don't know",
+    }
+    h2("Evaluator Independence")
+    body(_clean(f"Answer: {answer_map.get(result.gate_answer, 'Not answered')}"))
+    body(_clean(
+        f"Gate failed: {bool(result.independence_gate_failed)} "
+        f"(tagged EU AI Act {GLOBAL_ART9_TAG})"
+    ))
+    body(_clean(
+        "Why it matters: an evaluation run and reported by the model's own team "
+        "has an inherent conflict of interest - it does not tell you anything "
+        "about how the model performs under scrutiny it didn't design for itself."
+    ))
 
     h2("Flags")
     body("Still need to ask - not yet answered:")
@@ -233,7 +268,13 @@ def build_pdf_report(result, narrative: str, vendor_name: str = "") -> bytes:
         if not dim.any_answered:
             body("Not answered.")
             continue
-        body(_clean(f"Score: {dim.raw_score_sum}/{dim.max_score_sum}"))
+        score_line = f"Raw score: {dim.raw_score_sum:g}/{dim.max_score_sum:g}"
+        if dim.score_weight != 1:
+            score_line += (
+                f" - weighted contribution to overall score: "
+                f"{dim.weighted_score:g}/{dim.weighted_max:g} (raw x{dim.score_weight})"
+            )
+        body(_clean(score_line))
         for q in dim.questions:
             downgrade = " (downgraded - self-reported)" if q.downgraded else ""
             body(_clean(
