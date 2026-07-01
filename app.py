@@ -18,9 +18,6 @@ from src.data import (
     WORKED_EXAMPLE,
     TOTAL_QUESTIONS,
     GLOBAL_ART9_TAG,
-    COMBINED_OPTION_LABELS,
-    COMBINED_OPTION_BY_PAIR,
-    COMBINED_OPTION_BY_LABEL,
 )
 from src.scoring import compute_result, compute_dimension_result
 from src.ui import (
@@ -291,25 +288,34 @@ def render_dimension(dimension: dict):
                     unsafe_allow_html=True,
                 )
 
+            combined_options = question["combined_options"]
+            option_labels = [label for label, _, _ in combined_options]
+            option_by_pair = {
+                (score_key, evidence): label for label, score_key, evidence in combined_options
+            }
+            option_by_label = {
+                label: (score_key, evidence) for label, score_key, evidence in combined_options
+            }
+
             existing = dim_answers.get(question["id"])
             existing_index = None
             if existing:
-                existing_label = COMBINED_OPTION_BY_PAIR.get(
+                existing_label = option_by_pair.get(
                     (existing["score_key"], existing["evidence"])
                 )
-                if existing_label in COMBINED_OPTION_LABELS:
-                    existing_index = COMBINED_OPTION_LABELS.index(existing_label)
+                if existing_label in option_labels:
+                    existing_index = option_labels.index(existing_label)
 
             choice = st.radio(
                 "Answer",
-                options=COMBINED_OPTION_LABELS,
+                options=option_labels,
                 index=existing_index,
                 key=f"combined_{question['id']}",
                 label_visibility="collapsed",
             )
 
             if choice is not None:
-                score_key, evidence = COMBINED_OPTION_BY_LABEL[choice]
+                score_key, evidence = option_by_label[choice]
                 dim_answers[question["id"]] = {"score_key": score_key, "evidence": evidence}
             elif question["id"] in dim_answers:
                 del dim_answers[question["id"]]

@@ -21,25 +21,30 @@ EVIDENCE_TAGS = [
 
 # --- Combined answer options -------------------------------------------------
 # The buyer picks one plain-language option per question instead of setting
-# the score and evidence tag separately. Each option maps to exactly one
-# (score_key, evidence) pair — the scoring engine's data model is unchanged,
-# only the input widget collapses two decisions into one and rules out
-# nonsensical combinations (e.g. "adequate" with "not applicable" evidence).
+# the score and evidence tag separately. Each question defines its own 5
+# tailored option labels (via _opts below) so the wording reads as a direct
+# answer to that specific question, rather than a generic template repeated
+# 16 times. Every question's 5 options map 1:1 onto the same (score_key,
+# evidence) pairs in the same order, so the scoring engine's data model is
+# completely unaffected — only the label text changes per question.
 
-COMBINED_OPTIONS = [
-    ("Yes — and it's backed by documentation or verifiable proof", "adequate", "Documented & verifiable"),
-    ("Yes — but it's just the vendor's word, no proof", "adequate", "Self-reported by vendor"),
-    ("Sort of — they answered, with documentation, but it doesn't fully hold up", "inadequate", "Documented & verifiable"),
-    ("Sort of — they answered, but it's just their word and doesn't fully hold up", "inadequate", "Self-reported by vendor"),
-    ("No — they wouldn't say / don't know", "withheld", "Not applicable"),
+_SCORE_EVIDENCE_ORDER = [
+    ("adequate", "Documented & verifiable"),
+    ("adequate", "Self-reported by vendor"),
+    ("inadequate", "Documented & verifiable"),
+    ("inadequate", "Self-reported by vendor"),
+    ("withheld", "Not applicable"),
 ]
-COMBINED_OPTION_LABELS = [label for label, _, _ in COMBINED_OPTIONS]
-COMBINED_OPTION_BY_PAIR = {
-    (score_key, evidence): label for label, score_key, evidence in COMBINED_OPTIONS
-}
-COMBINED_OPTION_BY_LABEL = {
-    label: (score_key, evidence) for label, score_key, evidence in COMBINED_OPTIONS
-}
+
+
+def _opts(*labels):
+    """Pair 5 tailored labels with the canonical (score_key, evidence) order."""
+    assert len(labels) == 5, "each question needs exactly 5 combined-option labels"
+    return [
+        (label, score_key, evidence)
+        for label, (score_key, evidence) in zip(labels, _SCORE_EVIDENCE_ORDER)
+    ]
+
 
 # --- Global gate question ----------------------------------------------------
 
@@ -64,7 +69,9 @@ def gate_failed(gate_answer: str) -> bool:
 
 
 # --- Seven dimensions --------------------------------------------------------
-# Each question: id, script (read-to-vendor phrasing), minor_weight (0.5 or 1.0)
+# Each question: id, script (read-to-vendor phrasing), minor_weight (0.5 or 1.0),
+# example_good/example_bad (concrete illustration), combined_options (5 tailored
+# labels built via _opts()).
 # Each dimension: id, number (1-7), name, eu_ai_act_tag, score_weight (1 or 2), questions
 
 DIMENSIONS = [
@@ -81,6 +88,13 @@ DIMENSIONS = [
                 "minor_weight": 1.0,
                 "example_good": "They show a dated data-split manifest or contract clause proving the test set was frozen before training began.",
                 "example_bad": "They say “yes, obviously” but can't show when or how the split was actually made.",
+                "combined_options": _opts(
+                    "Yes — they showed a dated record proving the test set was frozen before training",
+                    "Yes — they said it was set aside first, but gave no documentation",
+                    "They gave documentation, but it doesn't clearly show the test set was frozen before training",
+                    "They said something about the timing, but it was just their word, not a clear answer",
+                    "No — they wouldn't say when the test set was created",
+                ),
             },
         ],
     },
@@ -97,6 +111,13 @@ DIMENSIONS = [
                 "minor_weight": 1.0,
                 "example_good": "They specify exactly what differs — a different city, quarter, or hardware batch — and can show it wasn't part of training.",
                 "example_bad": "They say it's “unseen” but it's just a random holdout from the same store, same week, same everything else.",
+                "combined_options": _opts(
+                    "Yes — they documented exactly what's different about the unseen data",
+                    "Yes — they said it's genuinely different, but gave no documentation",
+                    "They gave documentation, but the 'unseen' data looks like the same environment, just a different slice",
+                    "They said it's different, but couldn't explain how — sounds like the same environment",
+                    "No — they wouldn't explain what's actually different about the unseen data",
+                ),
             },
             {
                 "id": "d2_q2",
@@ -104,6 +125,13 @@ DIMENSIONS = [
                 "minor_weight": 1.0,
                 "example_good": "They hand over a results table broken down by site, subgroup, or condition, not just one topline number.",
                 "example_bad": "They give you one blended accuracy figure and no way to see if it holds up everywhere.",
+                "combined_options": _opts(
+                    "Yes — they gave a documented breakdown by site, subgroup, or condition",
+                    "Yes — they said results hold up across sites/subgroups, but only gave one topline number",
+                    "They gave documentation, but it's still mostly one blended number, not a real breakdown",
+                    "They mentioned a breakdown exists, but only ever showed one overall number",
+                    "No — they only gave one overall number, no breakdown at all",
+                ),
             },
         ],
     },
@@ -121,6 +149,13 @@ DIMENSIONS = [
                 "minor_weight": 1.0,
                 "example_good": "They provide a separate performance number for each use case you'll actually deploy.",
                 "example_bad": "They give you one blended number across every use case, with no per-case breakdown.",
+                "combined_options": _opts(
+                    "Yes — they gave a documented breakdown of performance per use case",
+                    "Yes — they said performance is broken out per use case, but gave no documentation",
+                    "They gave documentation, but it's still a blended average, not broken out per use case",
+                    "They said something about per-use-case performance, but only ever showed a blended number",
+                    "No — they report the blended average, with no visibility of performance by use case",
+                ),
             },
             {
                 "id": "d3_q2",
@@ -132,6 +167,13 @@ DIMENSIONS = [
                 "minor_weight": 1.0,
                 "example_good": "They ask which error type costs you more, then show precision/recall (or similar) split accordingly.",
                 "example_bad": "They only give one blended accuracy number that doesn't say which type of mistake you're exposed to.",
+                "combined_options": _opts(
+                    "Yes — they asked which error type costs us more and documented the split accordingly",
+                    "Yes — they said they accounted for the cost difference, but didn't document the split",
+                    "They gave documentation, but it doesn't show which error type we're actually exposed to",
+                    "They said something about error costs, but only ever gave one blended number",
+                    "No — it's one blended number, with no visibility into which error type we're exposed to",
+                ),
             },
         ],
     },
@@ -148,6 +190,13 @@ DIMENSIONS = [
                 "minor_weight": 1.0,
                 "example_good": "The test data comes from conditions matching your deployment — same season, region, customer mix, etc.",
                 "example_bad": "The test data is old, from a different market, or otherwise doesn't resemble what you'll deploy into.",
+                "combined_options": _opts(
+                    "Yes — they documented that test conditions match our deployment environment",
+                    "Yes — they said the conditions match our deployment, but gave no documentation",
+                    "They gave documentation, but the conditions don't clearly match our deployment environment",
+                    "They said something about the conditions, but it sounds stale or unrepresentative",
+                    "No — they wouldn't confirm whether the test conditions match our deployment",
+                ),
             },
             {
                 "id": "d4_q2",
@@ -155,6 +204,13 @@ DIMENSIONS = [
                 "minor_weight": 1.0,
                 "example_good": "They explain how they monitor and re-test as real-world conditions shift, with a plan for ongoing checks.",
                 "example_bad": "It's a one-off test from a single point in time, with no plan to check whether it still holds.",
+                "combined_options": _opts(
+                    "Yes — they documented a plan for ongoing re-testing as conditions change",
+                    "Yes — they said they monitor for drift over time, but didn't document a specific plan",
+                    "They gave documentation, but it's still a one-off test with no ongoing monitoring",
+                    "They mentioned monitoring, but it sounds like a one-off, static test",
+                    "No — this is a static, one-time test with no plan to check it over time",
+                ),
             },
         ],
     },
@@ -175,6 +231,13 @@ DIMENSIONS = [
                 "minor_weight": 1.0,
                 "example_good": "They explain why the chosen metric (e.g. cost saved, not just accuracy) maps to what you actually care about.",
                 "example_bad": "They lead with a flattering metric (e.g. 99% accuracy) that doesn't reflect the outcome you're paying for.",
+                "combined_options": _opts(
+                    "Yes — they documented why this metric maps to the business outcome we care about",
+                    "Yes — they explained the metric choice, but didn't document the reasoning",
+                    "They gave documentation, but the metric still doesn't clearly map to our business outcome",
+                    "They said something about the metric choice, but it still looks like a flattering number, not our outcome",
+                    "No — they wouldn't explain why this metric is the right one for us",
+                ),
             },
             {
                 "id": "d5_q2",
@@ -182,6 +245,13 @@ DIMENSIONS = [
                 "minor_weight": 1.0,
                 "example_good": "They show a dated protocol or sign-off where the pass/fail bar was agreed before the test ran.",
                 "example_bad": "The threshold conveniently matches whatever number they got, with no prior agreement on record.",
+                "combined_options": _opts(
+                    "Yes — they showed a dated protocol proving the threshold was agreed before the test ran",
+                    "Yes — they said the threshold was set in advance, but gave no documentation",
+                    "They gave documentation, but it doesn't clearly show the threshold was set before results were seen",
+                    "They said the threshold was set in advance, but it conveniently matches the number they got",
+                    "No — they wouldn't say when or how the threshold was set",
+                ),
             },
             {
                 "id": "d5_q3",
@@ -189,6 +259,13 @@ DIMENSIONS = [
                 "minor_weight": 1.0,
                 "example_good": "They show performance against a simple baseline or the next-best alternative, so you can see the actual lift.",
                 "example_bad": "The number is presented on its own, with nothing to compare it against.",
+                "combined_options": _opts(
+                    "Yes — they documented a comparison against a baseline or simpler alternative",
+                    "Yes — they said there's a baseline comparison, but didn't show it",
+                    "They gave documentation, but there's still no real baseline comparison in it",
+                    "They mentioned a baseline, but never actually showed the comparison",
+                    "No — the number is presented with nothing to compare it against",
+                ),
             },
             {
                 "id": "d5_q4",
@@ -196,6 +273,13 @@ DIMENSIONS = [
                 "minor_weight": 0.5,
                 "example_good": "They include adversarial or unusual examples in the test set, not just the easy majority cases.",
                 "example_bad": "The test set is all straightforward, typical cases — nothing that would actually stress the model.",
+                "combined_options": _opts(
+                    "Yes — they documented testing against adversarial or edge-case examples",
+                    "Yes — they said they tested edge cases, but didn't show the results",
+                    "They gave documentation, but it's still mostly easy, typical cases",
+                    "They mentioned edge cases, but the examples shown are all easy ones",
+                    "No — only easy, typical cases were tested, as far as we can tell",
+                ),
             },
         ],
     },
@@ -212,6 +296,13 @@ DIMENSIONS = [
                 "minor_weight": 1.0,
                 "example_good": "They list the specific stores/time periods excluded from training and show how overlap was checked (e.g. a dedup log by store ID).",
                 "example_bad": "They say “we made sure there's no overlap” with no specifics on how.",
+                "combined_options": _opts(
+                    "Yes — they documented exactly which stores/periods were excluded from training, with proof of no overlap",
+                    "Yes — they said there's no overlap, but gave no documentation",
+                    "They gave documentation, but it doesn't clearly rule out overlap between training and test data",
+                    "They said there's no overlap, but couldn't explain how they checked",
+                    "No — they wouldn't confirm whether training and test data overlap",
+                ),
             },
             {
                 "id": "d6_q2",
@@ -219,6 +310,13 @@ DIMENSIONS = [
                 "minor_weight": 1.0,
                 "example_good": "They describe a specific method (e.g. similarity threshold on embeddings) and share the dedup results.",
                 "example_bad": "They say they “don't think there are duplicates.”",
+                "combined_options": _opts(
+                    "Yes — they documented a specific deduplication method and shared the results",
+                    "Yes — they said they checked for duplicates, but gave no documentation",
+                    "They gave documentation, but it doesn't show a real deduplication check",
+                    "They said they “don't think there are duplicates,” with no real check described",
+                    "No — they wouldn't say whether they checked for near-duplicates",
+                ),
             },
         ],
     },
@@ -235,6 +333,13 @@ DIMENSIONS = [
                 "minor_weight": 1.0,
                 "example_good": "They walk you through specific cases where the model got it wrong, not just the wins.",
                 "example_bad": "Every example they show is a success — no failure cases anywhere in the material.",
+                "combined_options": _opts(
+                    "Yes — they documented specific failure cases, not just successes",
+                    "Yes — they said there are failure cases, but didn't show any",
+                    "They gave documentation, but it's still mostly success stories, few real failures",
+                    "They mentioned failures exist, but every example shown was a success",
+                    "No — every example shown was a success, no failure cases at all",
+                ),
             },
             {
                 "id": "d7_q2",
@@ -242,6 +347,13 @@ DIMENSIONS = [
                 "minor_weight": 1.0,
                 "example_good": "There's a written section listing where the model is known to underperform or hasn't been tested.",
                 "example_bad": "The evaluation is presented as flawless, with no caveats or limitations mentioned.",
+                "combined_options": _opts(
+                    "Yes — there's a written limitations section covering where this doesn't apply",
+                    "Yes — they said there are limitations, but nothing is written down",
+                    "There's some documentation, but it doesn't really cover limitations or caveats",
+                    "They mentioned some limitations verbally, but nothing substantive",
+                    "No — this is presented as flawless, with no limitations mentioned",
+                ),
             },
             {
                 "id": "d7_q3",
@@ -249,6 +361,13 @@ DIMENSIONS = [
                 "minor_weight": 1.0,
                 "example_good": "They share enough detail — data sources, split logic, parameters — that someone else could rerun it and check.",
                 "example_bad": "There's no way to reproduce this; you just have to take the summary number on faith.",
+                "combined_options": _opts(
+                    "Yes — they shared enough detail (data sources, splits, parameters) that this could be reproduced",
+                    "Yes — they said it's reproducible, but didn't actually share the details",
+                    "They gave documentation, but it's not enough detail to actually reproduce this",
+                    "They said it could be reproduced, but didn't share anything concrete",
+                    "No — there's no way to reproduce this; we'd just have to take the number on faith",
+                ),
             },
         ],
     },
