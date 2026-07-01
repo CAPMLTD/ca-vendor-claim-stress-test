@@ -159,7 +159,6 @@ DIMENSIONS = [
         "id": "d6_leakage",
         "number": 6,
         "name": "Leakage Risk",
-        "double_weighted": True,
         "eu_ai_act_tag": None,
         "score_weight": 2,
         "questions": [

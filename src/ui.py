@@ -6,41 +6,65 @@ BRAND_CSS = """
 <style>
 :root {
     --ca-navy: #0B1F3A;
+    --ca-navy-dark: #0A0F1E;
     --ca-navy-light: #16305A;
+    --ca-brand-green: #176B43;
     --ca-red: #C0392B;
     --ca-amber: #D4900A;
     --ca-green: #1E8449;
     --ca-bg: #F7F8FA;
 }
 
+/* Streamlit's fixed top toolbar (hamburger / Deploy / GitHub icons on Community
+   Cloud) sits above the block container. Without enough top padding it overlaps
+   the rounded top corners of our custom header, making it look clipped. */
 .block-container {
-    padding-top: 1.5rem;
+    padding-top: 3rem;
     max-width: 900px;
 }
 
 .ca-header {
-    background: linear-gradient(90deg, var(--ca-navy) 0%, var(--ca-navy-light) 100%);
+    background: linear-gradient(135deg, var(--ca-navy-dark) 0%, var(--ca-brand-green) 100%);
     color: white;
-    padding: 1.1rem 1.6rem;
-    border-radius: 10px;
+    padding: 1.3rem 1.6rem;
+    border-radius: 14px;
     margin-bottom: 1.2rem;
 }
-.ca-header .ca-brand {
-    font-size: 0.78rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    opacity: 0.75;
-    margin-bottom: 0.15rem;
+.ca-header-top {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+}
+.ca-logo-badge {
+    flex-shrink: 0;
+    width: 46px;
+    height: 46px;
+    background: white;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.95rem;
+    color: var(--ca-navy-dark);
+    letter-spacing: -0.02em;
 }
 .ca-header .ca-title {
-    font-size: 1.65rem;
+    font-size: 1.5rem;
     font-weight: 700;
     margin: 0;
 }
 .ca-header .ca-pitch {
     font-size: 1.0rem;
     opacity: 0.92;
-    margin-top: 0.35rem;
+    margin-top: 0.5rem;
+}
+.ca-header .ca-tagline {
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0.7;
+    margin-top: 0.9rem;
 }
 
 .ca-scope-box {
@@ -137,9 +161,15 @@ def render_header(subtitle: str = None):
     st.markdown(
         f"""
         <div class="ca-header">
-            <div class="ca-brand">CAPMLTD &middot; CA AI Governance Toolkit</div>
-            <div class="ca-title">Vendor Claim Stress Test</div>
+            <div class="ca-header-top">
+                <div class="ca-logo-badge">CA</div>
+                <div class="ca-title">&#128678; Vendor Claim Stress Test</div>
+            </div>
             <div class="ca-pitch">{subtitle or pitch}</div>
+            <div class="ca-tagline">
+                EXCELLENCE | HONESTY | QUALITY &middot;
+                CA PROJECT MANAGEMENT SERVICES LTD &middot; CAPROJECTMGMT.COM
+            </div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -163,9 +193,9 @@ def render_footer():
     st.markdown(
         """
         <div class="ca-footer">
-            CAPMLTD &middot; CA AI Governance Toolkit &middot;
-            Vendor Claim Stress Test &middot; part of a suite with the
-            Model Card Generator and Annotation Brief Builder
+            CA Project Management Services Ltd (CAPMLTD) &middot; caprojectmgmt.com
+            &middot; Vendor Claim Stress Test &middot; part of the CA AI Governance
+            Toolkit, alongside the Model Card Generator and Annotation Brief Builder
         </div>
         """,
         unsafe_allow_html=True,

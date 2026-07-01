@@ -244,8 +244,11 @@ def render_dimension(dimension: dict):
             pill("Gate dimension — caps verdict at Amber if failed", "amber"),
             unsafe_allow_html=True,
         )
-    if dimension.get("double_weighted"):
-        st.markdown(pill("Double-weighted in scoring", "red"), unsafe_allow_html=True)
+    if dimension.get("score_weight", 1) > 1:
+        st.markdown(
+            pill(f"Double-weighted in scoring (×{dimension['score_weight']})", "red"),
+            unsafe_allow_html=True,
+        )
 
     # Reserve the spot for the progress indicator now, fill it in after this
     # run's widget interactions have updated session_state below — otherwise
