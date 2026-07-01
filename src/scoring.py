@@ -16,6 +16,7 @@ from src.data import (
     DIMENSIONS,
     SCALE_SCORES,
     SCALE_LABELS,
+    NOT_YET_ASKED_EVIDENCE,
     gate_failed as independence_gate_failed_fn,
 )
 
@@ -99,7 +100,8 @@ class StressTestResult:
     force_red: bool
     force_red_reasons: list
     dimensions: list  # list[DimensionResult]
-    withheld: list    # list[QuestionResult] where score_key == withheld
+    vendor_declined: list  # list[QuestionResult]: asked, vendor wouldn't say
+    not_yet_asked: list    # list[QuestionResult]: buyer hasn't asked / isn't sure
     inadequate: list  # list[QuestionResult] where score_key == inadequate
     followup_targets: list  # list[(dimension, QuestionResult)] scored amber/red
 
@@ -114,7 +116,7 @@ VERDICT_MESSAGES = {
 def score_answer(dimension: dict, question: dict, answer: dict) -> QuestionResult:
     """answer = {"score_key": "adequate"|"inadequate"|"withheld", "evidence": str}"""
     score_key = answer["score_key"]
-    evidence = answer.get("evidence", "Not applicable")
+    evidence = answer.get("evidence", NOT_YET_ASKED_EVIDENCE)
     raw_score = SCALE_SCORES[score_key]
     minor_weight = question.get("minor_weight", 1.0)
 
@@ -167,7 +169,8 @@ def compute_result(
     multi_use_case: True/False/None (None = not yet answered)
     """
     dim_results = []
-    withheld = []
+    vendor_declined = []
+    not_yet_asked = []
     inadequate = []
     followup_targets = []
 
@@ -191,7 +194,10 @@ def compute_result(
         for q in dr.questions:
             answered_questions += 1
             if q.score_key == "withheld":
-                withheld.append(q)
+                if q.evidence == NOT_YET_ASKED_EVIDENCE:
+                    not_yet_asked.append(q)
+                else:
+                    vendor_declined.append(q)
             elif q.score_key == "inadequate":
                 inadequate.append(q)
             if q.score_key in ("withheld", "inadequate"):
@@ -260,7 +266,8 @@ def compute_result(
         force_red=force_red,
         force_red_reasons=force_red_reasons,
         dimensions=dim_results,
-        withheld=withheld,
+        vendor_declined=vendor_declined,
+        not_yet_asked=not_yet_asked,
         inadequate=inadequate,
         followup_targets=followup_targets,
     )

@@ -13,33 +13,47 @@ SCALE_OPTIONS = [
 SCALE_LABELS = {key: label for key, label, _ in SCALE_OPTIONS}
 SCALE_SCORES = {key: score for key, _, score in SCALE_OPTIONS}
 
+# The two "withheld" sub-flavors carry different follow-up guidance: one is a
+# signal about the vendor's transparency, the other is purely the buyer's own
+# to-do. Both still score 0 — this only changes how the result screen and
+# report explain the gap.
+VENDOR_DECLINED_EVIDENCE = "Vendor wouldn't say"
+NOT_YET_ASKED_EVIDENCE = "Not yet asked by buyer"
+
 EVIDENCE_TAGS = [
     "Self-reported by vendor",
     "Documented & verifiable",
-    "Not applicable",
+    VENDOR_DECLINED_EVIDENCE,
+    NOT_YET_ASKED_EVIDENCE,
 ]
 
 # --- Combined answer options -------------------------------------------------
 # The buyer picks one plain-language option per question instead of setting
-# the score and evidence tag separately. Each question defines its own 5
+# the score and evidence tag separately. Each question defines its own 6
 # tailored option labels (via _opts below) so the wording reads as a direct
 # answer to that specific question, rather than a generic template repeated
-# 16 times. Every question's 5 options map 1:1 onto the same (score_key,
+# 16 times. Every question's 6 options map 1:1 onto the same (score_key,
 # evidence) pairs in the same order, so the scoring engine's data model is
 # completely unaffected — only the label text changes per question.
+#
+# The 5th and 6th options both score as "withheld" (0) but are tagged
+# differently: the 5th is "I asked and the vendor wouldn't say" (a
+# transparency red flag), the 6th is "I haven't asked / I'm not sure" (an
+# action item for the buyer, not a mark against the vendor).
 
 _SCORE_EVIDENCE_ORDER = [
     ("adequate", "Documented & verifiable"),
     ("adequate", "Self-reported by vendor"),
     ("inadequate", "Documented & verifiable"),
     ("inadequate", "Self-reported by vendor"),
-    ("withheld", "Not applicable"),
+    ("withheld", VENDOR_DECLINED_EVIDENCE),
+    ("withheld", NOT_YET_ASKED_EVIDENCE),
 ]
 
 
 def _opts(*labels):
-    """Pair 5 tailored labels with the canonical (score_key, evidence) order."""
-    assert len(labels) == 5, "each question needs exactly 5 combined-option labels"
+    """Pair 6 tailored labels with the canonical (score_key, evidence) order."""
+    assert len(labels) == 6, "each question needs exactly 6 combined-option labels"
     return [
         (label, score_key, evidence)
         for label, (score_key, evidence) in zip(labels, _SCORE_EVIDENCE_ORDER)
@@ -70,7 +84,7 @@ def gate_failed(gate_answer: str) -> bool:
 
 # --- Seven dimensions --------------------------------------------------------
 # Each question: id, script (read-to-vendor phrasing), minor_weight (0.5 or 1.0),
-# example_good/example_bad (concrete illustration), combined_options (5 tailored
+# example_good/example_bad (concrete illustration), combined_options (6 tailored
 # labels built via _opts()).
 # Each dimension: id, number (1-7), name, eu_ai_act_tag, score_weight (1 or 2), questions
 
@@ -94,6 +108,7 @@ DIMENSIONS = [
                     "They gave documentation, but it doesn't clearly show the test set was frozen before training",
                     "They said something about the timing, but it was just their word, not a clear answer",
                     "No — they wouldn't say when the test set was created",
+                    "I'm not sure — I haven't asked them when the test set was created",
                 ),
             },
         ],
@@ -117,6 +132,7 @@ DIMENSIONS = [
                     "They gave documentation, but the 'unseen' data looks like the same environment, just a different slice",
                     "They said it's different, but couldn't explain how — sounds like the same environment",
                     "No — they wouldn't explain what's actually different about the unseen data",
+                    "I'm not sure — I haven't asked them what's different about the unseen data",
                 ),
             },
             {
@@ -131,6 +147,7 @@ DIMENSIONS = [
                     "They gave documentation, but it's still mostly one blended number, not a real breakdown",
                     "They mentioned a breakdown exists, but only ever showed one overall number",
                     "No — they only gave one overall number, no breakdown at all",
+                    "I'm not sure — I haven't asked for a breakdown by site or subgroup",
                 ),
             },
         ],
@@ -155,6 +172,7 @@ DIMENSIONS = [
                     "They gave documentation, but it's still a blended average, not broken out per use case",
                     "They said something about per-use-case performance, but only ever showed a blended number",
                     "No — they report the blended average, with no visibility of performance by use case",
+                    "I'm not sure — I haven't asked whether they report performance per use case",
                 ),
             },
             {
@@ -173,6 +191,7 @@ DIMENSIONS = [
                     "They gave documentation, but it doesn't show which error type we're actually exposed to",
                     "They said something about error costs, but only ever gave one blended number",
                     "No — it's one blended number, with no visibility into which error type we're exposed to",
+                    "I'm not sure — I haven't asked which error type this evaluation reflects",
                 ),
             },
         ],
@@ -196,6 +215,7 @@ DIMENSIONS = [
                     "They gave documentation, but the conditions don't clearly match our deployment environment",
                     "They said something about the conditions, but it sounds stale or unrepresentative",
                     "No — they wouldn't confirm whether the test conditions match our deployment",
+                    "I'm not sure — I haven't asked whether the test conditions match our deployment",
                 ),
             },
             {
@@ -210,6 +230,7 @@ DIMENSIONS = [
                     "They gave documentation, but it's still a one-off test with no ongoing monitoring",
                     "They mentioned monitoring, but it sounds like a one-off, static test",
                     "No — this is a static, one-time test with no plan to check it over time",
+                    "I'm not sure — I haven't asked whether they monitor for changes over time",
                 ),
             },
         ],
@@ -237,6 +258,7 @@ DIMENSIONS = [
                     "They gave documentation, but the metric still doesn't clearly map to our business outcome",
                     "They said something about the metric choice, but it still looks like a flattering number, not our outcome",
                     "No — they wouldn't explain why this metric is the right one for us",
+                    "I'm not sure — I haven't asked why this metric was chosen",
                 ),
             },
             {
@@ -251,6 +273,7 @@ DIMENSIONS = [
                     "They gave documentation, but it doesn't clearly show the threshold was set before results were seen",
                     "They said the threshold was set in advance, but it conveniently matches the number they got",
                     "No — they wouldn't say when or how the threshold was set",
+                    "I'm not sure — I haven't asked when the threshold was set",
                 ),
             },
             {
@@ -265,6 +288,7 @@ DIMENSIONS = [
                     "They gave documentation, but there's still no real baseline comparison in it",
                     "They mentioned a baseline, but never actually showed the comparison",
                     "No — the number is presented with nothing to compare it against",
+                    "I'm not sure — I haven't asked whether there's a baseline comparison",
                 ),
             },
             {
@@ -279,6 +303,7 @@ DIMENSIONS = [
                     "They gave documentation, but it's still mostly easy, typical cases",
                     "They mentioned edge cases, but the examples shown are all easy ones",
                     "No — only easy, typical cases were tested, as far as we can tell",
+                    "I'm not sure — I haven't asked whether edge cases were tested",
                 ),
             },
         ],
@@ -302,6 +327,7 @@ DIMENSIONS = [
                     "They gave documentation, but it doesn't clearly rule out overlap between training and test data",
                     "They said there's no overlap, but couldn't explain how they checked",
                     "No — they wouldn't confirm whether training and test data overlap",
+                    "I'm not sure — I haven't asked whether training and test data overlap",
                 ),
             },
             {
@@ -316,6 +342,7 @@ DIMENSIONS = [
                     "They gave documentation, but it doesn't show a real deduplication check",
                     "They said they “don't think there are duplicates,” with no real check described",
                     "No — they wouldn't say whether they checked for near-duplicates",
+                    "I'm not sure — I haven't asked whether they checked for near-duplicates",
                 ),
             },
         ],
@@ -339,6 +366,7 @@ DIMENSIONS = [
                     "They gave documentation, but it's still mostly success stories, few real failures",
                     "They mentioned failures exist, but every example shown was a success",
                     "No — every example shown was a success, no failure cases at all",
+                    "I'm not sure — I haven't asked to see failure cases",
                 ),
             },
             {
@@ -353,6 +381,7 @@ DIMENSIONS = [
                     "There's some documentation, but it doesn't really cover limitations or caveats",
                     "They mentioned some limitations verbally, but nothing substantive",
                     "No — this is presented as flawless, with no limitations mentioned",
+                    "I'm not sure — I haven't asked for a limitations section",
                 ),
             },
             {
@@ -367,6 +396,7 @@ DIMENSIONS = [
                     "They gave documentation, but it's not enough detail to actually reproduce this",
                     "They said it could be reproduced, but didn't share anything concrete",
                     "No — there's no way to reproduce this; we'd just have to take the number on faith",
+                    "I'm not sure — I haven't asked for enough detail to reproduce this",
                 ),
             },
         ],
@@ -381,6 +411,8 @@ GLOBAL_ART9_TAG = "Art. 9"  # global independence gate maps to Art. 9
 
 # --- Follow-up question templates (sent to vendor when scored Amber/Red) ----
 # Keyed by question id — these are slightly reframed as direct requests for evidence.
+# Used both for "vendor wouldn't say" (re-ask/push back) and "not yet asked"
+# (ask for the first time) — the request to the vendor reads the same either way.
 
 FOLLOWUP_TEMPLATES = {
     "gate_independence": (
@@ -457,6 +489,9 @@ FOLLOWUP_TEMPLATES = {
 }
 
 # --- Worked example: anonymised real retail AI bake-off scenario, scores RED ---
+# In this scenario the buyer did run the stress test conversation with the
+# vendor — every gap below is something the vendor was asked and didn't
+# provide, not something the buyer forgot to ask.
 
 WORKED_EXAMPLE = {
     "gate_answer": "same_team",
@@ -468,29 +503,29 @@ WORKED_EXAMPLE = {
         },
         "d2_distributional": {
             "d2_q1": {"score_key": "inadequate", "evidence": "Self-reported by vendor"},
-            "d2_q2": {"score_key": "withheld", "evidence": "Not applicable"},
+            "d2_q2": {"score_key": "withheld", "evidence": "Vendor wouldn't say"},
         },
         "d3_percase": {
             "d3_q1": {"score_key": "inadequate", "evidence": "Self-reported by vendor"},
-            "d3_q2": {"score_key": "withheld", "evidence": "Not applicable"},
+            "d3_q2": {"score_key": "withheld", "evidence": "Vendor wouldn't say"},
         },
         "d4_temporal": {
             "d4_q1": {"score_key": "inadequate", "evidence": "Self-reported by vendor"},
-            "d4_q2": {"score_key": "withheld", "evidence": "Not applicable"},
+            "d4_q2": {"score_key": "withheld", "evidence": "Vendor wouldn't say"},
         },
         "d5_metric": {
             "d5_q1": {"score_key": "inadequate", "evidence": "Self-reported by vendor"},
-            "d5_q2": {"score_key": "withheld", "evidence": "Not applicable"},
-            "d5_q3": {"score_key": "withheld", "evidence": "Not applicable"},
-            "d5_q4": {"score_key": "withheld", "evidence": "Not applicable"},
+            "d5_q2": {"score_key": "withheld", "evidence": "Vendor wouldn't say"},
+            "d5_q3": {"score_key": "withheld", "evidence": "Vendor wouldn't say"},
+            "d5_q4": {"score_key": "withheld", "evidence": "Vendor wouldn't say"},
         },
         "d6_leakage": {
-            "d6_q1": {"score_key": "withheld", "evidence": "Not applicable"},
-            "d6_q2": {"score_key": "withheld", "evidence": "Not applicable"},
+            "d6_q1": {"score_key": "withheld", "evidence": "Vendor wouldn't say"},
+            "d6_q2": {"score_key": "withheld", "evidence": "Vendor wouldn't say"},
         },
         "d7_transparency": {
-            "d7_q1": {"score_key": "withheld", "evidence": "Not applicable"},
-            "d7_q2": {"score_key": "withheld", "evidence": "Not applicable"},
+            "d7_q1": {"score_key": "withheld", "evidence": "Vendor wouldn't say"},
+            "d7_q2": {"score_key": "withheld", "evidence": "Vendor wouldn't say"},
             "d7_q3": {"score_key": "inadequate", "evidence": "Self-reported by vendor"},
         },
     },

@@ -49,9 +49,26 @@ def build_markdown_report(result, narrative: str, vendor_name: str = "") -> str:
 
     # --- Section 4: Flag lists ---
     lines.append("## Flags")
-    lines.append("### Information withheld (scored 0, marked don't know)")
-    if result.withheld:
-        for q in result.withheld:
+    lines.append("### Still need to ask — not yet answered")
+    lines.append(
+        "_You haven't gotten this from the vendor yet, or aren't sure how to "
+        "judge it. This isn't a mark against the vendor — it's your to-do list. "
+        "Use the questions below next time you speak with them._"
+    )
+    if result.not_yet_asked:
+        for q in result.not_yet_asked:
+            lines.append(f"- **[{q.dimension_name}]** {q.script}")
+    else:
+        lines.append("- None.")
+    lines.append("")
+    lines.append("### Vendor wouldn't answer")
+    lines.append(
+        "_The vendor was asked directly and did not provide this. Treat this "
+        "as a signal about their transparency, not just a gap in your own "
+        "homework._"
+    )
+    if result.vendor_declined:
+        for q in result.vendor_declined:
             lines.append(f"- **[{q.dimension_name}]** {q.script}")
     else:
         lines.append("- None.")
@@ -171,9 +188,21 @@ def build_pdf_report(result, narrative: str, vendor_name: str = "") -> bytes:
                      f"(questionnaire {result.completion_pct}% complete)"))
 
     h2("Flags")
-    body("Information withheld (scored 0, marked don't know):")
-    if result.withheld:
-        for q in result.withheld:
+    body("Still need to ask - not yet answered:")
+    body(_clean(
+        "(Not a mark against the vendor - this is the buyer's own to-do list.)"
+    ))
+    if result.not_yet_asked:
+        for q in result.not_yet_asked:
+            body(_clean(f"  - [{q.dimension_name}] {q.script}"))
+    else:
+        body("  - None.")
+    body("Vendor wouldn't answer:")
+    body(_clean(
+        "(The vendor was asked directly and did not provide this.)"
+    ))
+    if result.vendor_declined:
+        for q in result.vendor_declined:
             body(_clean(f"  - [{q.dimension_name}] {q.script}"))
     else:
         body("  - None.")

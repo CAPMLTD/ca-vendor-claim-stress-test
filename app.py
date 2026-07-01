@@ -439,23 +439,38 @@ def render_results():
 
     st.markdown("---")
 
-    # 4. Flag lists — clearly separated
+    # 4. Flag lists — clearly separated into three distinct categories
     st.markdown("### Flags")
-    col_a, col_b = st.columns(2)
-    with col_a:
-        st.markdown("**Information withheld** _(scored 0, marked don't know)_")
-        if result.withheld:
-            for q in result.withheld:
-                st.markdown(f"- [{q.dimension_name}] {q.script}")
-        else:
-            st.markdown("_None._")
-    with col_b:
-        st.markdown("**Information provided and inadequate**")
-        if result.inadequate:
-            for q in result.inadequate:
-                st.markdown(f"- [{q.dimension_name}] {q.script} _(evidence: {q.evidence})_")
-        else:
-            st.markdown("_None._")
+
+    st.markdown("**Still need to ask — not yet answered**")
+    st.caption(
+        "You haven't gotten this from the vendor yet, or aren't sure how to judge "
+        "it. This isn't a mark against the vendor — it's your to-do list. Use the "
+        "questions above next time you speak with them."
+    )
+    if result.not_yet_asked:
+        for q in result.not_yet_asked:
+            st.markdown(f"- [{q.dimension_name}] {q.script}")
+    else:
+        st.markdown("_None._")
+
+    st.markdown("**Vendor wouldn't answer**")
+    st.caption(
+        "The vendor was asked directly and did not provide this. Treat this as a "
+        "signal about their transparency, not just a gap in your own homework."
+    )
+    if result.vendor_declined:
+        for q in result.vendor_declined:
+            st.markdown(f"- [{q.dimension_name}] {q.script}")
+    else:
+        st.markdown("_None._")
+
+    st.markdown("**Information provided and inadequate**")
+    if result.inadequate:
+        for q in result.inadequate:
+            st.markdown(f"- [{q.dimension_name}] {q.script} _(evidence: {q.evidence})_")
+    else:
+        st.markdown("_None._")
 
     st.markdown("---")
 
