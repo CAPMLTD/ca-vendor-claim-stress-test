@@ -98,7 +98,7 @@ DIMENSIONS = [
         "questions": [
             {
                 "id": "d1_q1",
-                "script": "Ask: was your test data set aside before training started, or put together afterwards?",
+                "script": "Was your test data set aside before training started, or put together afterwards?",
                 "minor_weight": 1.0,
                 "example_good": "They show a dated data-split manifest or contract clause proving the test set was frozen before training began.",
                 "example_bad": "They say “yes, obviously” but can't show when or how the split was actually made.",
@@ -122,7 +122,7 @@ DIMENSIONS = [
         "questions": [
             {
                 "id": "d2_q1",
-                "script": "Ask: was your 'unseen' test data actually from different conditions, or just a different slice of the same environment?",
+                "script": "Was your 'unseen' test data actually from different conditions, or just a different slice of the same environment?",
                 "minor_weight": 1.0,
                 "example_good": "They specify exactly what differs — a different city, quarter, or hardware batch — and can show it wasn't part of training.",
                 "example_bad": "They say it's “unseen” but it's just a random holdout from the same store, same week, same everything else.",
@@ -137,7 +137,7 @@ DIMENSIONS = [
             },
             {
                 "id": "d2_q2",
-                "script": "Ask: did they break results down by site/subgroup/condition, or just give you one overall number?",
+                "script": "Did they break results down by site/subgroup/condition, or just give you one overall number?",
                 "minor_weight": 1.0,
                 "example_good": "They hand over a results table broken down by site, subgroup, or condition, not just one topline number.",
                 "example_bad": "They give you one blended accuracy figure and no way to see if it holds up everywhere.",
@@ -162,7 +162,7 @@ DIMENSIONS = [
         "questions": [
             {
                 "id": "d3_q1",
-                "script": "Ask: if this covers multiple use cases, do they report performance per use case, or just a blended average?",
+                "script": "If this covers multiple use cases, do they report performance per use case, or just a blended average?",
                 "minor_weight": 1.0,
                 "example_good": "They provide a separate performance number for each use case you'll actually deploy.",
                 "example_bad": "They give you one blended number across every use case, with no per-case breakdown.",
@@ -178,7 +178,7 @@ DIMENSIONS = [
             {
                 "id": "d3_q2",
                 "script": (
-                    "Ask: is a false positive or a false negative more costly to your business — "
+                    "Is a false positive or a false negative more costly to your business — "
                     "and does their evaluation reflect that, or is it one blended number that hides "
                     "which one you're actually exposed to?"
                 ),
@@ -205,7 +205,7 @@ DIMENSIONS = [
         "questions": [
             {
                 "id": "d4_q1",
-                "script": "Ask: was the test data collected under conditions like what you'll actually deploy into, or is it stale/unrepresentative?",
+                "script": "Was the test data collected under conditions like what you'll actually deploy into, or is it stale/unrepresentative?",
                 "minor_weight": 1.0,
                 "example_good": "The test data comes from conditions matching your deployment — same season, region, customer mix, etc.",
                 "example_bad": "The test data is old, from a different market, or otherwise doesn't resemble what you'll deploy into.",
@@ -220,7 +220,7 @@ DIMENSIONS = [
             },
             {
                 "id": "d4_q2",
-                "script": "Ask: are these static test cases, or do they reflect real-world conditions changing over time?",
+                "script": "Are these static test cases, or do they reflect real-world conditions changing over time?",
                 "minor_weight": 1.0,
                 "example_good": "They explain how they monitor and re-test as real-world conditions shift, with a plan for ongoing checks.",
                 "example_bad": "It's a one-off test from a single point in time, with no plan to check whether it still holds.",
@@ -245,7 +245,7 @@ DIMENSIONS = [
             {
                 "id": "d5_q1",
                 "script": (
-                    "Ask: does the metric they're showing you actually match the business outcome "
+                    "Does the metric they're showing you actually match the business outcome "
                     "you need — or did they pick a metric because it looks good, not because it's "
                     "what you care about?"
                 ),
@@ -263,7 +263,7 @@ DIMENSIONS = [
             },
             {
                 "id": "d5_q2",
-                "script": "Ask: was the pass/fail threshold agreed before they saw the results, or chosen afterwards to fit the number they got?",
+                "script": "Was the pass/fail threshold agreed before they saw the results, or chosen afterwards to fit the number they got?",
                 "minor_weight": 1.0,
                 "example_good": "They show a dated protocol or sign-off where the pass/fail bar was agreed before the test ran.",
                 "example_bad": "The threshold conveniently matches whatever number they got, with no prior agreement on record.",
@@ -278,7 +278,7 @@ DIMENSIONS = [
             },
             {
                 "id": "d5_q3",
-                "script": "Ask: did they compare against a baseline or simplest-possible-approach, or is this number presented with nothing to compare it to?",
+                "script": "Did they compare against a baseline or simplest-possible-approach, or is this number presented with nothing to compare it to?",
                 "minor_weight": 1.0,
                 "example_good": "They show performance against a simple baseline or the next-best alternative, so you can see the actual lift.",
                 "example_bad": "The number is presented on its own, with nothing to compare it against.",
@@ -293,7 +293,7 @@ DIMENSIONS = [
             },
             {
                 "id": "d5_q4",
-                "script": "Ask: did they test against tricky edge cases, or only the easy ones?",
+                "script": "Did they test against tricky edge cases, or only the easy ones?",
                 "minor_weight": 0.5,
                 "example_good": "They include adversarial or unusual examples in the test set, not just the easy majority cases.",
                 "example_bad": "The test set is all straightforward, typical cases — nothing that would actually stress the model.",
@@ -317,7 +317,7 @@ DIMENSIONS = [
         "questions": [
             {
                 "id": "d6_q1",
-                "script": "Ask: is there any overlap between the data they trained on and the data they tested on — same stores, same time period, same source?",
+                "script": "Is there any overlap between the data they trained on and the data they tested on — same stores, same time period, same source?",
                 "minor_weight": 1.0,
                 "example_good": "They list the specific stores/time periods excluded from training and show how overlap was checked (e.g. a dedup log by store ID).",
                 "example_bad": "They say “we made sure there's no overlap” with no specifics on how.",
@@ -332,7 +332,7 @@ DIMENSIONS = [
             },
             {
                 "id": "d6_q2",
-                "script": "Ask: did they check for and remove near-duplicate records between training and test data?",
+                "script": "Did they check for and remove near-duplicate records between training and test data?",
                 "minor_weight": 1.0,
                 "example_good": "They describe a specific method (e.g. similarity threshold on embeddings) and share the dedup results.",
                 "example_bad": "They say they “don't think there are duplicates.”",
@@ -356,7 +356,7 @@ DIMENSIONS = [
         "questions": [
             {
                 "id": "d7_q1",
-                "script": "Ask: did they show you where it failed, or only where it succeeded?",
+                "script": "Did they show you where it failed, or only where it succeeded?",
                 "minor_weight": 1.0,
                 "example_good": "They walk you through specific cases where the model got it wrong, not just the wins.",
                 "example_bad": "Every example they show is a success — no failure cases anywhere in the material.",
@@ -371,7 +371,7 @@ DIMENSIONS = [
             },
             {
                 "id": "d7_q2",
-                "script": "Ask: is there a written limitations section, or is this presented as flawless?",
+                "script": "Is there a written limitations section, or is this presented as flawless?",
                 "minor_weight": 1.0,
                 "example_good": "There's a written section listing where the model is known to underperform or hasn't been tested.",
                 "example_bad": "The evaluation is presented as flawless, with no caveats or limitations mentioned.",
@@ -386,7 +386,7 @@ DIMENSIONS = [
             },
             {
                 "id": "d7_q3",
-                "script": "Ask: is there enough detail here that an independent person could rerun this evaluation and get the same answer?",
+                "script": "Is there enough detail here that an independent person could rerun this evaluation and get the same answer?",
                 "minor_weight": 1.0,
                 "example_good": "They share enough detail — data sources, split logic, parameters — that someone else could rerun it and check.",
                 "example_bad": "There's no way to reproduce this; you just have to take the summary number on faith.",

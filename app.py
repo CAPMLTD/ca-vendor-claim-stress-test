@@ -157,6 +157,14 @@ def render_landing():
         "number on it. This tool doesn't tell you whether the model is good — "
         "it tells you whether you can trust the evidence you were shown."
     )
+    st.markdown(
+        "What follows is a series of questions you should get clear answers to "
+        "— directly from the vendor, or from your own read of the evidence they "
+        "gave you — before you sign off on procuring their solution. Answer "
+        "honestly based on what you've actually been told; if you're not sure, "
+        "say so, and the tool will tell you exactly what to go find out before "
+        "you proceed."
+    )
 
     col1, col2 = st.columns([1, 1])
     with col1:
@@ -172,9 +180,8 @@ def render_landing():
     st.markdown(
         "**How it works:** you'll be asked one gate question about who ran the "
         "evaluation, then walked through seven dimensions of evaluation "
-        "evidence — each phrased as a script you can read straight to your "
-        "vendor. You can stop and view a directional result once you've "
-        "answered around 40% of the questions."
+        "evidence, one question at a time. You can stop and view a directional "
+        "result once you've answered around 40% of the questions."
     )
 
     render_footer()
