@@ -136,6 +136,19 @@ BRAND_CSS = """
     margin-bottom: 0.4rem;
 }
 
+.ca-question-example {
+    background: #F3F6FA;
+    border-left: 3px solid #8AA4C8;
+    border-radius: 4px;
+    padding: 0.55rem 0.8rem;
+    font-size: 0.85rem;
+    color: #33475B;
+    margin-bottom: 0.7rem;
+}
+.ca-question-example b {
+    color: #16305A;
+}
+
 .ca-directional-msg {
     background: #E9F3EC;
     border: 1px solid #A9D6B7;

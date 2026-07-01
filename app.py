@@ -15,11 +15,12 @@ import streamlit as st
 from src.data import (
     DIMENSIONS,
     GATE_QUESTION,
-    SCALE_OPTIONS,
-    EVIDENCE_TAGS,
     WORKED_EXAMPLE,
     TOTAL_QUESTIONS,
     GLOBAL_ART9_TAG,
+    COMBINED_OPTION_LABELS,
+    COMBINED_OPTION_BY_PAIR,
+    COMBINED_OPTION_BY_LABEL,
 )
 from src.scoring import compute_result, compute_dimension_result
 from src.ui import (
@@ -38,10 +39,6 @@ STAGE_GATE = "gate"
 STAGE_RESULTS = "results"
 DIMENSION_STAGES = [d["id"] for d in DIMENSIONS]
 ALL_STAGES = [STAGE_LANDING, STAGE_GATE] + DIMENSION_STAGES + [STAGE_RESULTS]
-
-SCORE_LABEL_TO_KEY = {label: key for key, label, _ in SCALE_OPTIONS}
-SCORE_KEYS_IN_ORDER = [key for key, _, _ in SCALE_OPTIONS]
-SCORE_LABELS_IN_ORDER = [label for _, label, _ in SCALE_OPTIONS]
 
 
 # --------------------------------------------------------------------------- #
@@ -283,41 +280,37 @@ def render_dimension(dimension: dict):
             if minor:
                 st.caption("Minor weight in scoring.")
 
+            example_good = question.get("example_good")
+            example_bad = question.get("example_bad")
+            if example_good and example_bad:
+                st.markdown(
+                    f'<div class="ca-question-example">'
+                    f"<b>Strong answer looks like:</b> {example_good}<br/>"
+                    f"<b>Weak answer looks like:</b> {example_bad}"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+
             existing = dim_answers.get(question["id"])
-            score_index = (
-                SCORE_KEYS_IN_ORDER.index(existing["score_key"])
-                if existing
-                else None
-            )
-            score_choice = st.radio(
+            existing_index = None
+            if existing:
+                existing_label = COMBINED_OPTION_BY_PAIR.get(
+                    (existing["score_key"], existing["evidence"])
+                )
+                if existing_label in COMBINED_OPTION_LABELS:
+                    existing_index = COMBINED_OPTION_LABELS.index(existing_label)
+
+            choice = st.radio(
                 "Answer",
-                options=SCORE_LABELS_IN_ORDER,
-                index=score_index,
-                key=f"score_{question['id']}",
+                options=COMBINED_OPTION_LABELS,
+                index=existing_index,
+                key=f"combined_{question['id']}",
                 label_visibility="collapsed",
             )
 
-            evidence_choice = None
-            if score_choice is not None:
-                existing_evidence = existing["evidence"] if existing else None
-                evidence_index = (
-                    EVIDENCE_TAGS.index(existing_evidence)
-                    if existing_evidence in EVIDENCE_TAGS
-                    else None
-                )
-                evidence_choice = st.radio(
-                    "Evidence tag",
-                    options=EVIDENCE_TAGS,
-                    index=evidence_index,
-                    key=f"evidence_{question['id']}",
-                    horizontal=True,
-                )
-
-            if score_choice is not None and evidence_choice is not None:
-                dim_answers[question["id"]] = {
-                    "score_key": SCORE_LABEL_TO_KEY[score_choice],
-                    "evidence": evidence_choice,
-                }
+            if choice is not None:
+                score_key, evidence = COMBINED_OPTION_BY_LABEL[choice]
+                dim_answers[question["id"]] = {"score_key": score_key, "evidence": evidence}
             elif question["id"] in dim_answers:
                 del dim_answers[question["id"]]
 
